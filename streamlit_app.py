@@ -1,119 +1,84 @@
 import streamlit as st
 import pandas as pd
+from st_supabase_connection import SupabaseConnection, execute_query
+from datetime import datetime
 
 
-st.title("📊 Data evaluation app")
+st.set_page_config(page_title='Support Ticket Workflow', page_icon='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAY1BMVEX////9+PjXjI6+P0K/QkXBSErpv8D14+PJZWi6MTS7NTjFVljryMjCT1G6MjW7Njm5LTDTfoDgqaq4Jir67+/ThIbx19fz3d3doqP25+fIYGPReXvdnqDYkpP79PTluLm+QELIVu6CAAAAy0lEQVR4AX2SBQ7DQAwEHc4xlMP//2TpnNJGHbFW2pGBPsjyokxUNf3StEI+EaqBUBvrnvhAQCxkCncRsv3BplDKI4SnVrgnQmV/lAfIsrPjVlFvKLnVmgsqOw59j8q6TEppIyoHkZS2OqKy9zxIu6FU3OrHCcLZcmtZozJfW7sTKtdBxGFPRN/DHAtWuohTRs9KowkIr0FQORnBp9wYRHOrLGcCzju+iDrilKvS9nsIG7UqB0LlwsqixnCQT5zo8CL7sJRlcUd8v9YNS1IRq/svf5IAAAAASUVORK5CYII=')
+st.image("https://i0.wp.com/inmac.co.in/wp-content/uploads/2022/09/INMAC-web-logo.png?w=721&ssl=1")
+st.title( 'Ticket Update')
 
-st.write(
-    "We are so glad to see you here. ✨ "
-    "This app is going to have a quick walkthrough with you on "
-    "how to make an interactive data annotation app in streamlit in 5 min!"
-)
+conn = st.connection("supabase",type=SupabaseConnection)
+ids = pd.DataFrame(execute_query(conn.table("Logs").select("id", count="None"), ttl=None).data)["id"].to_list()
+idInput = st.selectbox("Ticket ID", options=ids, index=None)
+if idInput is not "" and idInput is not None:
+    data = execute_query(conn.table("Logs").select("*", count="None").eq('id', idInput), ttl=None).data[0]
+    completed = data["completed"]
+    completedAt = data["completed_at"]
+    callReport = data["call_report"]
+    problem = data["problem"]
+    serialNumbers = data["serialNumbers"]
+    with st.form('Ticket', clear_on_submit=True):
+        problemInput = st.text_area("Problem Statement", value=problem)
+        serialNumbers = st.text_area('Serial Number\'s', placeholder="Seperate with comma", value=",".join(serialNumbers))
+        placeholderCompletedAt = st.empty()
+        col1Completed, col2Completed = st.columns([1,1])
+        with col1Completed:
+                placeholderCompletedAt1 = st.empty() 
+        with col2Completed:
+                placeholderCompletedAt2 = st.empty() 
 
-st.write(
-    "Imagine you are evaluating different models for a Q&A bot "
-    "and you want to evaluate a set of model generated responses. "
-    "You have collected some user data. "
-    "Here is a sample question and response set."
-)
+        placeholderCallReport1 = st.empty()
+        placeholderCallReport2 = st.empty()
+        placeholderCallReport3 = st.empty()
 
-data = {
-    "Questions": [
-        "Who invented the internet?",
-        "What causes the Northern Lights?",
-        "Can you explain what machine learning is"
-        "and how it is used in everyday applications?",
-        "How do penguins fly?",
-    ],
-    "Answers": [
-        "The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting"
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds.",
-    ],
-}
+        save = st.form_submit_button("Save Report")
+    
+    with placeholderCompletedAt:
+            completedInput = st.toggle("Completed", completed)
 
-df = pd.DataFrame(data)
-
-st.write(df)
-
-st.write(
-    "Now I want to evaluate the responses from my model. "
-    "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-    "You will now notice our dataframe is in the editing mode and try to "
-    "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇"
-)
-
-df["Issue"] = [True, True, True, False]
-df["Category"] = ["Accuracy", "Accuracy", "Completeness", ""]
-
-new_df = st.data_editor(
-    df,
-    column_config={
-        "Questions": st.column_config.TextColumn(width="medium", disabled=True),
-        "Answers": st.column_config.TextColumn(width="medium", disabled=True),
-        "Issue": st.column_config.CheckboxColumn("Mark as annotated?", default=False),
-        "Category": st.column_config.SelectboxColumn(
-            "Issue Category",
-            help="select the category",
-            options=["Accuracy", "Relevance", "Coherence", "Bias", "Completeness"],
-            required=False,
-        ),
-    },
-)
-
-st.write(
-    "You will notice that we changed our dataframe and added new data. "
-    "Now it is time to visualize what we have annotated!"
-)
-
-st.divider()
-
-st.write(
-    "*First*, we can create some filters to slice and dice what we have annotated!"
-)
-
-col1, col2 = st.columns([1, 1])
-with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options=new_df.Issue.unique())
-with col2:
-    category_filter = st.selectbox(
-        "Choose a category",
-        options=new_df[new_df["Issue"] == issue_filter].Category.unique(),
-    )
-
-st.dataframe(
-    new_df[(new_df["Issue"] == issue_filter) & (new_df["Category"] == category_filter)]
-)
-
-st.markdown("")
-st.write(
-    "*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`"
-)
-
-issue_cnt = len(new_df[new_df["Issue"] == True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
-
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.metric("Number of responses", issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
-
-df_plot = new_df[new_df["Category"] != ""].Category.value_counts().reset_index()
-
-st.bar_chart(df_plot, x="Category", y="count")
-
-st.write(
-    "Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:"
-)
+    if completedInput == True:
+            if completed==False:
+                    with placeholderCompletedAt1:    
+                            completedDate = st.date_input("Completed At", value = None)
+                    with placeholderCompletedAt2:
+                            completedTime = st.time_input("Completed At", value = None)
+            else:
+                    with placeholderCompletedAt1:    
+                            completedDate = st.date_input("Completed At", value = datetime.strptime(completedAt[0:10], "%Y-%m-%d"))
+                    with placeholderCompletedAt2:
+                            completedTime = st.time_input("Completed At", value = datetime.strptime(completedAt[12:20], "%H:%M:%S"))
+    with placeholderCallReport1:
+        newCallReportInput = st.file_uploader(label="Call Reports", type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=True)
+    with placeholderCallReport2:
+        callReportInput = st.multiselect("Call Reports", callReport+newCallReportInput, callReport+newCallReportInput)
+    with placeholderCallReport3:
+        if callReportInput != None:
+            with st.container():
+                for i in callReportInput:
+                    if isinstance(i, str):
+                        data = conn.download("images" ,source_path=i, ttl=None)
+                        st.image(data[0])
+                    else:
+                        st.image(i)
+    if save:
+        serialNumbers = serialNumbers.replace(" ", "").split(",")
+        for i in callReportInput:
+            if not isinstance(i, str):
+                filename = "call_reports/"+str(datetime.now())+i.__getattribute__("name")
+                conn.upload("images", "local",i , filename)
+                callReportInput.append(filename)
+                callReportInput.remove(i)
+        if completedInput:
+            completed_at = str(datetime.combine(completedDate, completedTime))
+        else:
+            completed_at=None
+        execute_query(conn.table('Logs').update([{
+                                "problem":problemInput,
+                                "serialNumbers":serialNumbers,
+                                "completed":str(completedInput),
+                                "completed_at": completed_at,
+                                "call_report":callReportInput,
+                        }]).eq("id",idInput), ttl='0')
+        st.rerun()
 
