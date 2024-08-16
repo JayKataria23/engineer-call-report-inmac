@@ -24,9 +24,9 @@ if idInput is not "" and idInput is not None:
     with st.form('Ticket', clear_on_submit=True):
         col1Completed, col2Completed = st.columns([1,1])
         with col1Completed:
-            completedDate = st.date_input("Completed At")
+            completedDate = st.date_input("Completed At", disabled=True)
         with col2Completed:
-            completedTime = st.time_input("Completed At", value=current_time)
+            completedTime = st.time_input("Completed At", value=current_time, disabled=True)
         newCallReportInput = st.file_uploader(label="Call Report", type=["png", "jpg", "jpeg", "webp", "pdf"], accept_multiple_files=False)
         save = st.form_submit_button("Save Report")
     
