@@ -22,27 +22,25 @@ if submit:
     if location["latitude"] is None:
         st.error("Location is required. Please allow location access.")
     else:
-        if image is None:
-            st.error("Please upload file first")
-        else:
     # Find the engineer's ID and contact number for the selected engineer
-            selected_engineer = engineers_data[engineers_data["name"] == engineerInput].iloc[0]
-            selected_engineer_contact = selected_engineer["contact_number"]
-            selected_engineer_id = selected_engineer["id"]
+        selected_engineer = engineers_data[engineers_data["name"] == engineerInput].iloc[0]
+        selected_engineer_contact = selected_engineer["contact_number"]
+        selected_engineer_id = selected_engineer["id"]
+        filename = ""
+        if image is not None:
             filename = "attendance_image/"+str(datetime.now())+image.__getattribute__("name")
             conn.upload("images", "local",image , filename)
+        if selected_engineer_contact == contactInput:
+            st.write("Contact number matches.")
             
-            if selected_engineer_contact == contactInput:
-                st.write("Contact number matches.")
-                
-                # Update the Attendance table with engineer ID, latitude, and longitude
-                attendance_data = {
-                    "engineer_id": selected_engineer_id,
-                    "latitude": location["latitude"],
-                    "longitude": location["longitude"],
-                    "image":filename
-                }
-                execute_query(conn.table("attendance").insert(attendance_data), ttl="0")
-                st.write("Attendance has been recorded.")
-            else:
-                st.write("Contact number does not match.")
+            # Update the Attendance table with engineer ID, latitude, and longitude
+            attendance_data = {
+                "engineer_id": selected_engineer_id,
+                "latitude": location["latitude"],
+                "longitude": location["longitude"],
+                "image":filename
+            }
+            execute_query(conn.table("attendance").insert(attendance_data), ttl="0")
+            st.write("Attendance has been recorded.")
+        else:
+            st.write("Contact number does not match.")
